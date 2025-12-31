@@ -1,0 +1,89 @@
+# version: "3.9"
+
+# services:
+#   backend:
+#     build: .
+#     container_name: placement-engine-app
+#     restart: always
+
+#     volumes:
+#       - /tmp:/tmp
+#       - /var/run/docker.sock:/var/run/docker.sock
+
+#     environment:
+#       CODE_RUN_DIR: /code-run
+#       PORT: 3000
+#       CORS_ORIGIN: ${CORS_ORIGIN}
+
+#     ports:
+#       - "3000:3000"
+
+
+# version: "3.9"
+
+# services:
+#   backend:
+#     build: .
+#     container_name: placement-engine-app
+#     restart: always
+#     ports:
+#       - "3000:3000"
+#     volumes:
+#       - /tmp:/tmp
+#     environment:
+#       PORT: 3000
+#       CORS_ORIGIN: ${CORS_ORIGIN}
+#       RUNNER_URL: http://runner:4000
+#     depends_on:
+#       - runner
+#     security_opt:
+#       - no-new-privileges:true
+#     cap_drop:
+#       - ALL
+
+#   runner:
+#     build: src/Runners
+#     container_name: runner
+#     restart: always
+#     volumes:
+#       - /var/run/docker.sock:/var/run/docker.sock
+#       - /tmp:/tmp
+#     environment:
+#       RUNNER_PORT: 4000
+#     security_opt:
+#       - no-new-privileges:true 
+
+version: "3.9"
+
+services:
+  backend:
+    build: .
+    container_name: compiler
+    restart: always
+    ports:
+      - "3000:3000"
+    volumes:
+      - /tmp:/tmp
+    environment:
+      PORT: 3000
+      RUNNER_URL: http://runner:4000
+      CORS_ORIGIN: ${CORS_ORIGIN}
+    depends_on:
+      - runner
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  runner:
+    build: src/Runners
+    container_name: runner
+    user: root
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /tmp:/tmp
+    environment:
+      RUNNER_PORT: 4000
+    security_opt:
+      - no-new-privileges:true
