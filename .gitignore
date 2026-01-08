@@ -140,5 +140,11 @@ dist
 
 # SvelteKit build / generate output
 .svelte-kit
-
+#runner scripts
+cpp-runner
+java-runner
+javascript-runner
+go-runner
+rust-runner
+python-runner
 # End of https://www.toptal.com/developers/gitignore/api/node

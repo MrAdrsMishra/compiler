@@ -12,6 +12,9 @@ try {
     app.get('/',(req,res)=>{
         res.send(`the server is listening here`)
     })
+    app.get('/health',(req,res)=>{
+        res.send(`the server is listening here and loking fine`)
+    })
 } catch (error) {
     console.error(`somthing went wrong while starting server`,error)
     process.exit(0);

@@ -79,7 +79,7 @@ export const runCode = async (req, res) => {
       { selectedLanguage, userCode, userInput },
       { timeout: runnerRequestTimeout }
     );
-
+    console.log(response.data)
     res.json(response.data);
   } catch (err) {
     const isTimeout = err.code === "ECONNABORTED";
