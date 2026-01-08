@@ -9,7 +9,8 @@ app.use(express.json());
 
 const PORT = process.env.RUNNER_PORT || 4000;
 
-/* ------------------ CONFIG ------------------ */
+/* ------------------ CONFIG ------------------ */ 
+// these all are public runner images available on my docker registry
 const IMAGES = {
   cpp: "mradrsmishra/compiler.com:cpp-runner",
   python: "mradrsmishra/compiler.com:python-runner",
