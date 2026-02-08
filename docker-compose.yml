@@ -1,4 +1,4 @@
-#       # ssh -i compiler-key-ec2.pem ec2-user@13.53.134.1
+
 
 services:
   nginx:
@@ -31,7 +31,7 @@ services:
     cap_drop:
       - ALL
 
-  runner:
+  runner :
     build: src/Runners
     container_name: runner
     restart: always
