@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import os from "os";
 import { spawn, spawnSync } from "child_process";
+import axios from "axios";
 
 const app = express();
 app.use(express.json());
@@ -148,9 +149,12 @@ app.post("/run", (req, res) => {
     res.status(500).json({ verdict: "SYSTEM_ERROR", error: err.message });
   });
 });
-
-app.listen(PORT, () => console.log(`Runner listening on ${PORT}`));
+app.get('/health',(_,res)=> {
+  res.send('fine running successfully')
+})
+app.listen(PORT||3000, () => console.log(`Runner listening on ${PORT}`));
 
 function cleanup(dir) {
   fs.rmSync(dir, { recursive: true, force: true });
 }
+
