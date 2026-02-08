@@ -1,11 +1,23 @@
+#       # ssh -i compiler-key-ec2.pem ec2-user@13.53.134.1
 
 services:
+  nginx:
+    image: nginx:alpine
+    container_name: compiler-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
+    restart: always
+
   backend:
     build: .
     container_name: compiler
     restart: always
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
     volumes:
       - /tmp:/tmp
     environment:
@@ -28,7 +40,6 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - /tmp:/tmp
     environment:
-      RUNNER_PORT: 4000
+      RUNNER_PORT: ${RUNNER_PORT}
     security_opt:
       - no-new-privileges:true
-      
