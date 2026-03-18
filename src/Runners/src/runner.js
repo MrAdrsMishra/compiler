@@ -149,8 +149,8 @@ app.post("/run", (req, res) => {
     res.status(500).json({ verdict: "SYSTEM_ERROR", error: err.message });
   });
 });
-app.get('/health',(_,res)=> {
-  res.send('fine running successfully')
+app.get('/runner-health',(_,res)=> {
+  res.send('runner running fine and successfully up')
 })
 app.listen(PORT||3000, () => console.log(`Runner listening on ${PORT}`));
 

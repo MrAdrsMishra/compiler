@@ -10,12 +10,12 @@ try {
     app.listen(process.env.PORT,()=>{
         console.log(`main server started at port: ${process.env.PORT}`)
     })
-    app.get('/',async(req,res)=>{
-        let response=await axios.get(`${process.env.RUNNER_URL}/health`)
-       res.send(response)
+    app.get('/runner-health',async(req,res)=>{
+        let response=await axios.get(`${process.env.RUNNER_URL}/runner-health`)
+       res.send(response.data)
     })
     app.get('/health',(req,res)=>{
-        res.send(`the server is listening here and loking fine`)
+        res.send('compiler backend running fine')
     })
 } catch (error) {
     console.error(`somthing went wrong while starting server`,error)
