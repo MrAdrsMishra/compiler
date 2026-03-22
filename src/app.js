@@ -26,5 +26,5 @@ app.use("/accessstatic",express.static(path.join(__dirname,'public')))
 // for cookies handling
 app.use(cookieParser())
 import compilerRouter from './routes/compilerRouter.routes.js';
-app.use('/v1/practice',compilerRouter)
+app.use('/practice',compilerRouter)
 export {app}

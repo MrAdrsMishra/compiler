@@ -10,10 +10,6 @@ try {
     app.listen(process.env.PORT,()=>{
         console.log(`main server started at port: ${process.env.PORT}`)
     })
-    app.get('/runner-health',async(req,res)=>{
-        let response=await axios.get(`${process.env.RUNNER_URL}/runner-health`)
-       res.send(response.data)
-    })
     app.get('/health',(req,res)=>{
         res.send('compiler backend running fine')
     })
