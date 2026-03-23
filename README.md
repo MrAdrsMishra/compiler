@@ -1,146 +1,138 @@
 # Secure Code Runner Platform
 
-A **Docker‑based, sandboxed online code execution system** inspired by online judges (Codeforces, LeetCode, HackerRank).
-It securely compiles and runs **untrusted user code** across multiple languages with strict resource and filesystem isolation.
+A high-performance, **Docker‑based, sandboxed online code execution system** designed for competitive programming platforms and online judges. It securely compiles and executes untrusted user code across multiple languages with strict resource isolation and multi-layer security.
 
 ---
 
-## 🚀 Features
+## 🚀 Key Features
 
-*  Strong sandboxing** (read‑only filesystem, no network)
-*  Multi‑language support** (C++, Go, Rust, Java, Node.js)
-*  Resource limits** (CPU, memory, PIDs)
-*  Isolated execution** using tmpfs
-*  No root execution** inside containers
-*  Designed to handle **malicious or infinite user code**
+- **Multi-Layer Sandboxing**: Combines Docker isolation, non-root execution, and strict Linux capability dropping.
+- **Resource Constraints**: Fine-grained control over CPU (0.5 cores), Memory (128MB-256MB), and PIDs (128 limit).
+- **Multi-Language Support**: Optimized runners for C++20, Python 3, Rust, Java, and Node.js.
+- **Network Isolation**: Zero network access for user code to prevent data exfiltration.
+- **Filesystem Security**: Read-only root filesystem with `tmpfs` mounts for secure execution.
+- **Rate Limiting**: Integrated Nginx rate limiting to protect against DoS attacks.
 
 ---
 
 ## 🧱 Architecture Overview
 
-```
-Client
-  │
-  ▼
-Main API (Express.js)
-  │
-  ▼
-Language Runner Service (Docker)
-  │
-  ├─ Mount user code (read‑only)
-  ├─ Compile code
-  ├─ Execute binary in exec‑enabled tmpfs
-  └─ Capture stdout / stderr
+The system uses a 3-tier architecture to ensure maximum security and scalability:
+
+```mermaid
+graph TD
+    Client[Client] -->|HTTP| Nginx[Nginx Reverse Proxy]
+    Nginx -->|Rate Limited| Backend[Main API Service]
+    Backend -->|Internal API| Runner[Runner Coordinator]
+    Runner -->|Docker API| Sandbox[Isolated Language Container]
+    Sandbox -->|Execute| UserCode[User Code]
 ```
 
-Each language runs inside its **own minimal Docker image**.
-
----
-
-## 🧩 Services
-
-### 1️⃣ Main Service (`server.js`)
-
-* Receives code + input
-* Chooses correct runner
-* Spawns Docker container with security flags
-* Collects output & verdict
-
-Runs on **port 3000**.
-
----
-
-### 2️⃣ Runner Services
-
-Each language has a dedicated image:
-
-| Language | Image         | Notes                 |
-| -------- | ------------- | --------------------- |
-| C++      | `cpp-runner`  | Uses `g++`            |
-| Go       | `go-runner`   | Custom `GOCACHE`      |
-| Rust     | `rust-runner` | `rustc` static binary |
-| Java     | `java-runner` | JVM based             |
-| Node     | `node-runner` | JS runtime            |
+1.  **Nginx**: Handles SSL termination, load balancing, and strictly enforces rate limits (5-10 req/s).
+2.  **Main API (Express.js)**: Orchestrates the workflow, validates inputs, and communicates with the Runner service.
+3.  **Runner Service (Docker-in-Docker)**: Manages the lifecycle of volatile execution containers.
+4.  **Language Containers**: Minimal, hardened images containing only the necessary compiler/runtime.
 
 ---
 
 ## 🔐 Security Model
 
-### Filesystem
+### 1. Docker Runtime Security
+Containers are spawned with the following safety flags:
+- `--read-only`: Root filesystem is immutable.
+- `--network=none`: No internet or local network access.
+- `--cap-drop=ALL`: Removes all Linux capabilities.
+- `--security-opt=no-new-privileges`: Prevents privilege escalation.
+- `--pids-limit=128`: Protection against fork bombs.
 
-| Path        | Permission           | Purpose           |
-| ----------- | -------------------- | ----------------- |
-| `/app/work` | RW, **noexec**       | User code + input |
-| `/tmp`      | RW, **exec allowed** | Compiled binaries |
-| `/`         | Read‑only            | System safety     |
-
----
-
-### Docker Restrictions
-
-```bash
---read-only
---network=none
---pids-limit=64
---memory=256m
---cpus=0.5
---cap-drop=ALL
---security-opt=no-new-privileges
---tmpfs=/tmp:rw,nosuid,size=64m
-```
+### 2. Filesystem Strategy
+| Path | Permission | Purpose |
+| :--- | :--- | :--- |
+| `/` | **Read-Only** | Protects system binaries and libraries. |
+| `/app/work` | **Read/Write (noexec)** | Temporary storage for user source code. |
+| `/tmp` | **Read/Write (exec)** | `tmpfs` mount for compiled binaries execution. |
 
 ---
 
-## 🏃 Execution Flow
+## 🛠️ Tech Stack
 
-1. User submits code + input
-2. Main service writes files to `/app/work`
-3. Docker container is spawned
-4. Code is **compiled** in `/app/work`
-5. Binary copied to `/tmp`
-6. Binary executed safely
-7. Output collected
+- **Backend**: Node.js, Express.js
+- **Infrastructure**: Docker, Docker Compose
+- **Reverse Proxy**: Nginx
+- **Languages Supported**:
+    - **C++**: `g++ 13.x` (C++20)
+    - **Python**: `Python 3.12`
+    - **Rust**: `rustc 1.75+`
+    - **Java**: `OpenJDK 21`
+    - **Node.js**: `Node 24`
 
 ---
 
-## 🧪 Example Request
+## 🏃 Getting Started
 
+### Prerequisites
+- Docker & Docker Compose
+- Node.js (for local development)
+
+### Setup & Run
+1.  **Clone the repository**:
+    ```bash
+    git clone https://github.com/MrAdrsMishra/compiler-VM.git
+    cd compiler-VM
+    ```
+2.  **Configure environment**:
+    Create a `.env` file in the root:
+    ```env
+    PORT=3000
+    RUNNER_PORT=4000
+    CORS_ORIGIN=http://localhost:5173
+    RUNNER_URL=http://runner:4000
+    RUNNER_REQUEST_TIMEOUT_MS=20000
+    ```
+3.  **Spin up the infrastructure**:
+    ```bash
+    docker-compose up --build
+    ```
+
+The API will be available at `http://localhost`.
+
+---
+
+## 📡 API Reference
+
+### Run Code
+`POST /v1/practice/run-code`
+
+**Request Body:**
 ```json
 {
-  "selectedLanguage": "rust",
-  "userCode": "fn main(){println!(\"Hello\");}",
+  "selectedLanguage": "cpp",
+  "userCode": "#include <iostream>\nint main() { std::cout << \"Hello World\"; return 0; }",
   "userInput": ""
 }
 ```
 
-### Response
-
+**Success Response (Verdict: AC):**
 ```json
 {
   "success": true,
   "verdict": "AC",
-  "output": "Hello",
+  "output": "Hello World",
   "error": null
 }
 ```
 
+**Error Responses:**
+- `TLE`: Time Limit Exceeded (10s limit)
+- `COMPILE_ERROR`: Compilation failed
+- `RUNTIME_ERROR`: Crash or non-zero exit code
+- `SYSTEM_ERROR`: Infrastructure failure
+
 ---
 
-## ⚙️ Runner Script Secrity
-
-* **Never execute from user‑writable directory**
-* **Compile errors redirected to writable paths**
-* **Execution happens only from exec‑enabled tmpfs**
-
-Ensure Docker daemon is running.
-
+## ⭐ Author
 
 **Adarsh Mishra**
-Backend / Systems Engineering Enthusiast
+*Backend & Systems Engineering*
 
----
-
-## ⭐ Final Note
-
-This is **not a tutorial project** — it’s a **real‑world sandbox** i have used this on my T-P-App repo.
-If you understand this codebase**.
+This project is part of the [Placement Engine](https://github.com/MrAdrsMishra) ecosystem.

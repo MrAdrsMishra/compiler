@@ -12,12 +12,20 @@ export const runCode = async (req, res) => {
     );
     // console.log("runner servicecalled")
 
-    res.json(response.data);
+    const runnerData = response.data;
+    res.json({
+      data: {
+        stdout: runnerData.output,
+        stderr: runnerData.error,
+        compile_output: runnerData.verdict === "COMPILE_ERROR" ? runnerData.error : null
+      }
+    });
   } catch (err) {
     console.log("runner servicecalling failed")
     const isTimeout = err.code === "ECONNABORTED";
     res.status(500).json({
       verdict: isTimeout ? "RUNNER_TIMEOUT" : "RUNNER_ERROR",
+      message: isTimeout ? "Execution Timeout" : "Execution failed",
       error: err.message,
     });
   }
