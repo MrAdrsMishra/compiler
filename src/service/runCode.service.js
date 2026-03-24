@@ -17,7 +17,9 @@ export const runCode = async (req, res) => {
       data: {
         stdout: runnerData.output,
         stderr: runnerData.error,
-        compile_output: runnerData.verdict === "COMPILE_ERROR" ? runnerData.error : null
+        compile_output: runnerData.verdict === "COMPILE_ERROR" ? runnerData.error : null,
+        time: runnerData.time ?? null,
+        memory: runnerData.memory ?? null,
       }
     });
   } catch (err) {
