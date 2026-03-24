@@ -44,11 +44,19 @@ INPUT_PATH="/app/work/input.txt"
 WORK_DIR="/app/work"
 
 if [ ! -f "$CODE_PATH" ]; then
-  echo "ERROR: code.java not fodoceund"
+  echo "ERROR: code.java not found"
   exit 1
 fi
 
-CLASS_NAME=$(basename "$CODE_PATH" .java)
+# Detect declared public class name; fallback to Main, then code.
+CLASS_NAME=$(sed -n 's/^[[:space:]]*public[[:space:]]\+class[[:space:]]\+\([A-Za-z_][A-Za-z0-9_]*\).*/\1/p' "$CODE_PATH" | head -n 1)
+if [ -z "$CLASS_NAME" ]; then
+  if grep -q '^[[:space:]]*class[[:space:]]\+Main\b' "$CODE_PATH" || grep -q '^[[:space:]]*public[[:space:]]\+class[[:space:]]\+Main\b' "$CODE_PATH"; then
+    CLASS_NAME="Main"
+  else
+    CLASS_NAME="code"
+  fi
+fi
 
 # Compile in work directory and redirect errors to writable location
 javac -d "$WORK_DIR" "$CODE_PATH" 2> "$WORK_DIR/error.txt" || true
