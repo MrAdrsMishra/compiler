@@ -89,6 +89,42 @@ Containers are spawned with the following safety flags:
     RUNNER_URL=http://runner:4000
     RUNNER_REQUEST_TIMEOUT_MS=20000
     ```
+
+### Low-Resource EC2 Mode (t3.small friendly)
+
+To reduce total pulled image footprint and pull only what is used:
+
+```env
+# Use shared images for C/C++ and JS/TS
+RUNNER_USE_SHARED_IMAGES=1
+
+# Optional: allow only the languages you actually need on this node
+# Example keeps only C++, Python, JavaScript
+RUNNER_ALLOWED_LANGS=cpp,python,javascript
+
+# Optional: custom image repository
+RUNNER_IMAGE_REPO=mradrsmishra/compiler.com
+```
+
+Build/publish now supports shared runner images:
+
+- `gcc-runner` for both C and C++
+- `node-runner` for both JavaScript and TypeScript
+
+Legacy split images can still be built/published when needed:
+
+```bash
+BUILD_LEGACY_RUNNERS=1 npm run images:build
+PUBLISH_LEGACY_RUNNERS=1 npm run images:publish
+```
+
+Build and publish can also be filtered to only selected runners:
+
+```bash
+BUILD_LANGS=gcc,node,python npm run images:build
+PUBLISH_LANGS=gcc,node,python npm run images:publish
+```
+
 3.  **Spin up the infrastructure**:
     ```bash
     docker-compose up --build
