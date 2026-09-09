@@ -1,13 +1,13 @@
 #!/bin/sh
 set -e
 
-CODE_PATH="/app/work/code.kt"
-INPUT_PATH="/app/work/input.txt"
-WORK_DIR="/app/work"
-JAR_PATH="/tmp/app.jar"
-
 export HOME="/tmp"
 export TMPDIR="/tmp"
+
+CODE_PATH="/app/work/code.kt"
+INPUT_PATH="/app/work/input.txt"
+JAR_PATH="/tmp/app.jar"
+ERROR_PATH="/tmp/error.txt"
 
 mkdir -p /tmp/.kotlin
 
@@ -16,10 +16,10 @@ if [ ! -f "$CODE_PATH" ]; then
   exit 1
 fi
 
-kotlinc "$CODE_PATH" -include-runtime -d "$JAR_PATH" 2> "$WORK_DIR/error.txt" || true
+kotlinc "$CODE_PATH" -include-runtime -d "$JAR_PATH" 2> "$ERROR_PATH" || true
 
-if [ -s "$WORK_DIR/error.txt" ]; then
-  cat "$WORK_DIR/error.txt"
+if [ -s "$ERROR_PATH" ]; then
+  cat "$ERROR_PATH"
   exit 1
 fi
 
