@@ -11,25 +11,61 @@ app.use(express.json());
 const PORT = process.env.RUNNER_PORT || 4000;
 
 /* ------------------ CONFIG ------------------ */ 
-// these all are public runner images available on my docker registry
-const IMAGES = {
-  c: "mradrsmishra/compiler.com:c-runner",
-  cpp: "mradrsmishra/compiler.com:cpp-runner",
-  python: "mradrsmishra/compiler.com:python-runner",
-  go: "mradrsmishra/compiler.com:go-runner",
-  golang: "mradrsmishra/compiler.com:go-runner",
-  rust: "mradrsmishra/compiler.com:rust-runner",
-  javascript: "mradrsmishra/compiler.com:javascript-runner",
-  typescript: "mradrsmishra/compiler.com:typescript-runner",
-  java: "mradrsmishra/compiler.com:java-runner",
-  csharp: "mradrsmishra/compiler.com:csharp-runner",
-  php: "mradrsmishra/compiler.com:php-runner",
-  ruby: "mradrsmishra/compiler.com:ruby-runner",
-  kotlin: "mradrsmishra/compiler.com:kotlin-runner",
-  swift: "mradrsmishra/compiler.com:swift-runner",
-  r: "mradrsmishra/compiler.com:r-runner",
-  bash: "mradrsmishra/compiler.com:bash-runner",
+const IMAGE_REPO = process.env.RUNNER_IMAGE_REPO || "mradrsmishra/compiler.com";
+const USE_SHARED_IMAGES = process.env.RUNNER_USE_SHARED_IMAGES !== "0";
+const RUNNER_ALLOWED_LANGS = process.env.RUNNER_ALLOWED_LANGS || "";
+
+const imageTag = (tag) => `${IMAGE_REPO}:${tag}`;
+
+const LEGACY_IMAGE_MAP = {
+  c: imageTag("c-runner"),
+  cpp: imageTag("cpp-runner"),
+  python: imageTag("python-runner"),
+  go: imageTag("go-runner"),
+  golang: imageTag("go-runner"),
+  rust: imageTag("rust-runner"),
+  javascript: imageTag("javascript-runner"),
+  typescript: imageTag("typescript-runner"),
+  java: imageTag("java-runner"),
+  csharp: imageTag("csharp-runner"),
+  php: imageTag("php-runner"),
+  ruby: imageTag("ruby-runner"),
+  kotlin: imageTag("kotlin-runner"),
+  swift: imageTag("swift-runner"),
+  r: imageTag("r-runner"),
+  bash: imageTag("bash-runner"),
 };
+
+const SHARED_IMAGE_MAP = {
+  c: imageTag("gcc-runner"),
+  cpp: imageTag("gcc-runner"),
+  python: imageTag("python-runner"),
+  go: imageTag("go-runner"),
+  golang: imageTag("go-runner"),
+  rust: imageTag("rust-runner"),
+  javascript: imageTag("node-runner"),
+  typescript: imageTag("node-runner"),
+  java: imageTag("java-runner"),
+  csharp: imageTag("csharp-runner"),
+  php: imageTag("php-runner"),
+  ruby: imageTag("ruby-runner"),
+  kotlin: imageTag("kotlin-runner"),
+  swift: imageTag("swift-runner"),
+  r: imageTag("r-runner"),
+  bash: imageTag("bash-runner"),
+};
+
+const IMAGES = USE_SHARED_IMAGES ? SHARED_IMAGE_MAP : LEGACY_IMAGE_MAP;
+
+const ALLOWED_LANGS = new Set(
+  RUNNER_ALLOWED_LANGS
+    .split(",")
+    .map((lang) => lang.trim().toLowerCase())
+    .filter(Boolean)
+);
+
+const localImageCache = new Set();
+const imagePullInFlight = new Map();
 
 const EXTENSIONS = {
   c: "c",
@@ -75,9 +111,48 @@ const TIME_LIMITS_MS = {
   rust: 25000,
 };
 
+async function ensureImageAvailable(image) {
+  if (localImageCache.has(image)) {
+    return;
+  }
+
+  if (imagePullInFlight.has(image)) {
+    await imagePullInFlight.get(image);
+    return;
+  }
+
+  const pullPromise = new Promise((resolve, reject) => {
+    try {
+      const inspectRes = spawnSync("docker", ["image", "inspect", image], { stdio: "ignore" });
+      if (inspectRes.status !== 0) {
+        console.log(`Image ${image} not found locally, pulling...`);
+        const pullRes = spawnSync("docker", ["pull", image], { stdio: "inherit" });
+        if (pullRes.status !== 0) {
+          reject(new Error(`Failed to pull image ${image}`));
+          return;
+        }
+      }
+
+      localImageCache.add(image);
+      resolve();
+    } catch (err) {
+      reject(err);
+    }
+  });
+
+  imagePullInFlight.set(image, pullPromise);
+
+  try {
+    await pullPromise;
+  } finally {
+    imagePullInFlight.delete(image);
+  }
+}
+
 /* ------------------ RUN CODE ------------------ */
-app.post("/run", (req, res) => {
-  const { selectedLanguage, userCode = "", userInput = "" } = req.body;
+app.post("/run", async (req, res) => {
+  const { selectedLanguage: requestedLanguage, userCode = "", userInput = "" } = req.body;
+  const selectedLanguage = String(requestedLanguage || "").trim().toLowerCase();
   const startTime = process.hrtime.bigint();
 
   if (!IMAGES[selectedLanguage]) {
@@ -85,6 +160,14 @@ app.post("/run", (req, res) => {
       success: false,
       verdict: "INVALID_LANGUAGE",
       error: "Unsupported language",
+    });
+  }
+
+  if (ALLOWED_LANGS.size > 0 && !ALLOWED_LANGS.has(selectedLanguage)) {
+    return res.status(403).json({
+      success: false,
+      verdict: "LANGUAGE_BLOCKED",
+      error: `Language ${selectedLanguage} is disabled on this runner`,
     });
   }
 
@@ -100,18 +183,10 @@ app.post("/run", (req, res) => {
     return res.status(500).json({ verdict: "FS_ERROR" });
   }
 
-  // Ensure image exists locally; pull synchronously if missing (don't count pull time toward runner timeout)
+  // Pull only when a language is first used and cache the result.
   const image = IMAGES[selectedLanguage];
   try {
-    const inspectRes = spawnSync("docker", ["image", "inspect", image], { stdio: "ignore" });
-    if (inspectRes.status !== 0) {
-      console.log(`Image ${image} not found locally, pulling...`);
-      const pullRes = spawnSync("docker", ["pull", image], { stdio: "inherit" });
-      if (pullRes.status !== 0) {
-        cleanup(tempDir);
-        return res.status(500).json({ verdict: "SYSTEM_ERROR", error: `Failed to pull image ${image}` });
-      }
-    }
+    await ensureImageAvailable(image);
   } catch (err) {
     cleanup(tempDir);
     return res.status(500).json({ verdict: "SYSTEM_ERROR", error: err.message });
@@ -134,6 +209,8 @@ app.post("/run", (req, res) => {
     "--cap-drop=ALL",
     "--security-opt=no-new-privileges",
     "--tmpfs=/tmp:rw,nosuid,exec,size=64m",
+    "-e",
+    `SELECTED_LANGUAGE=${selectedLanguage}`,
     "-v",
     `${tempDir}:/app/work:rw`,
     image,
