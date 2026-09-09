@@ -43,6 +43,13 @@ CODE_PATH="/app/work/code.java"
 INPUT_PATH="/app/work/input.txt"
 WORK_DIR="/app/work"
 
+export HOME="/tmp"
+export TMPDIR="/tmp"
+BUILD_DIR="/tmp/classes"
+ERROR_PATH="/tmp/error.txt"
+
+mkdir -p "$BUILD_DIR"
+
 if [ ! -f "$CODE_PATH" ]; then
   echo "ERROR: code.java not found"
   exit 1
@@ -58,14 +65,14 @@ if [ -z "$CLASS_NAME" ]; then
   fi
 fi
 
-# Compile in work directory and redirect errors to writable location
-javac -d "$WORK_DIR" "$CODE_PATH" 2> "$WORK_DIR/error.txt" || true
+# Compile into the writable tmpfs (mount is read-only)
+javac -d "$BUILD_DIR" "$CODE_PATH" 2> "$ERROR_PATH" || true
 
-if [ -s "$WORK_DIR/error.txt" ]; then
-  cat "$WORK_DIR/error.txt"
+if [ -s "$ERROR_PATH" ]; then
+  cat "$ERROR_PATH"
   exit 1
 fi
 
 # Run the compiled class
-cd "$WORK_DIR"
+cd "$BUILD_DIR"
 java "$CLASS_NAME" < "$INPUT_PATH"

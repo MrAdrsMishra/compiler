@@ -3,8 +3,8 @@ set -e
 
 CODE_PATH="/app/work/code.swift"
 INPUT_PATH="/app/work/input.txt"
-WORK_DIR="/app/work"
 BIN_PATH="/tmp/app"
+ERROR_PATH="/tmp/error.txt"
 
 export HOME="/tmp"
 export TMPDIR="/tmp"
@@ -18,10 +18,10 @@ if [ ! -f "$CODE_PATH" ]; then
   exit 1
 fi
 
-swiftc "$CODE_PATH" -O -o "$BIN_PATH" 2> "$WORK_DIR/error.txt" || true
+swiftc "$CODE_PATH" -O -o "$BIN_PATH" 2> "$ERROR_PATH" || true
 
-if [ -s "$WORK_DIR/error.txt" ]; then
-  cat "$WORK_DIR/error.txt"
+if [ -s "$ERROR_PATH" ]; then
+  cat "$ERROR_PATH"
   exit 1
 fi
 
