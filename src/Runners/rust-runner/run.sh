@@ -1,29 +1,29 @@
 #!/bin/sh
 set -e
 
+export HOME="/tmp"
+export TMPDIR="/tmp"
+
 CODE_PATH="/app/work/code.rs"
 INPUT_PATH="/app/work/input.txt"
-WORK_DIR="/app/work"
 
 EXEC_DIR="/tmp"
-BIN_WORK="$WORK_DIR/app"
 BIN_EXEC="$EXEC_DIR/app"
+ERROR_PATH="/tmp/error.txt"
 
 if [ ! -f "$CODE_PATH" ]; then
   echo "ERROR: code.rs not found"
   exit 1
 fi
 
-# Compile (allowed)
-rustc "$CODE_PATH" -O -o "$BIN_WORK" 2> "$WORK_DIR/error.txt" || true
+# Compile (allowed) directly into the writable tmpfs
+rustc "$CODE_PATH" -C linker=/usr/bin/gcc -O -o "$BIN_EXEC" 2> "$ERROR_PATH" || true
 
-if [ -s "$WORK_DIR/error.txt" ]; then
-  cat "$WORK_DIR/error.txt"
+if [ -s "$ERROR_PATH" ]; then
+  cat "$ERROR_PATH"
   exit 1
 fi
 
-# Move to exec-enabled FS
-cp "$BIN_WORK" "$BIN_EXEC"
 chmod +x "$BIN_EXEC"
 
 # Run

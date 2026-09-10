@@ -1,10 +1,13 @@
 #!/bin/sh
 set -e
 
+export HOME="/tmp"
+export TMPDIR="/tmp"
+
 CODE_PATH="/app/work/code.ts"
 INPUT_PATH="/app/work/input.txt"
-WORK_DIR="/app/work"
 BUILD_DIR="/tmp/ts-build"
+ERROR_PATH="/tmp/error.txt"
 
 mkdir -p "$BUILD_DIR"
 
@@ -13,8 +16,8 @@ if [ ! -f "$CODE_PATH" ]; then
   exit 1
 fi
 
-if ! esbuild "$CODE_PATH" --platform=node --format=cjs --target=es2020 --log-level=error --outfile="$BUILD_DIR/code.js" > /dev/null 2> "$WORK_DIR/error.txt"; then
-  cat "$WORK_DIR/error.txt"
+if ! esbuild "$CODE_PATH" --platform=node --format=cjs --target=es2020 --log-level=error --outfile="$BUILD_DIR/code.js" > /dev/null 2> "$ERROR_PATH"; then
+  cat "$ERROR_PATH"
   exit 1
 fi
 

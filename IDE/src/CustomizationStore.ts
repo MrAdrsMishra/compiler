@@ -285,30 +285,44 @@ const useCustomizationStore = create<EditorState>((set, get) => {
       set({ isRunning: true });
 
       try {
-        const res = await api.post("/run-code", {
+        const baseURL = api.defaults.baseURL || "";
+        const endpoint = baseURL.endsWith("/practice") ? "/run-code" : "/practice/run-code";
+
+        const res = await api.post(endpoint, {
           selectedLanguage,
           userCode,
           userInput,
         });
 
-        const data = res.data.data;
+        const data = res.data?.data || res.data || {};
+        const stdout = (data.stdout || "").trim();
+        const stderr = (data.stderr || "").trim();
+        const compileOutput = (data.compile_output || "").trim();
+
+        const combinedOutput = [stdout, stderr, compileOutput].filter(Boolean).join("\n\n").trim();
+
+        const formattedMemory =
+          data.memory !== null && data.memory !== undefined
+            ? typeof data.memory === "number"
+              ? `${data.memory} MB`
+              : String(data.memory)
+            : "0 MB";
 
         set({
-          output:
-            data.stdout ||
-            data.stderr ||
-            data.compile_output ||
-            "No Output",
+          output: combinedOutput || "No Output",
           executionTime: data.time ?? null,
-          memoryUsage: data.memory !== null && data.memory !== undefined ? `${data.memory} MB` : '0',
+          memoryUsage: formattedMemory,
           isRunning: false,
         });
       } catch (err: any) {
+        const errorMsg =
+          err?.response?.data?.error ||
+          err?.response?.data?.message ||
+          err?.message ||
+          "Execution Failed";
+
         set({
-          output:
-            err?.response?.data?.message ||
-            err?.message ||
-            "Execution Failed",
+          output: `Execution Error:\n${errorMsg}`,
           isRunning: false,
         });
       }

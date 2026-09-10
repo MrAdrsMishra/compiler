@@ -1,10 +1,14 @@
 #!/bin/sh
 set -e
 
+export HOME="/tmp"
+export TMPDIR="/tmp"
+
 LANGUAGE="${SELECTED_LANGUAGE:-javascript}"
 WORK_DIR="/app/work"
 INPUT_PATH="$WORK_DIR/input.txt"
 TS_BUILD_DIR="/tmp/ts-build"
+ERROR_PATH="/tmp/error.txt"
 
 if [ "$LANGUAGE" = "typescript" ]; then
   CODE_PATH="$WORK_DIR/code.ts"
@@ -16,8 +20,8 @@ if [ "$LANGUAGE" = "typescript" ]; then
 
   mkdir -p "$TS_BUILD_DIR"
 
-  if ! esbuild "$CODE_PATH" --platform=node --format=cjs --target=es2020 --log-level=error --outfile="$TS_BUILD_DIR/code.js" > /dev/null 2> "$WORK_DIR/error.txt"; then
-    cat "$WORK_DIR/error.txt"
+  if ! esbuild "$CODE_PATH" --platform=node --format=cjs --target=es2020 --log-level=error --outfile="$TS_BUILD_DIR/code.js" > /dev/null 2> "$ERROR_PATH"; then
+    cat "$ERROR_PATH"
     exit 1
   fi
 

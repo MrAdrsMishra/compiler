@@ -1,12 +1,16 @@
 #!/bin/sh
 set -e
 
+export HOME="/tmp"
+export TMPDIR="/tmp"
+
 CODE_PATH="/app/work/code.c"
 INPUT_PATH="/app/work/input.txt"
 WORK_DIR="/app/work"
 
 BUILD_DIR="/tmp/build"
 EXEC_PATH="/tmp/app"
+ERROR_PATH="/tmp/error.txt"
 
 mkdir -p "$BUILD_DIR"
 
@@ -15,10 +19,10 @@ if [ ! -f "$CODE_PATH" ]; then
   exit 1
 fi
 
-gcc "$CODE_PATH" -O2 -std=c17 -o "$BUILD_DIR/app" 2> "$WORK_DIR/error.txt" || true
+gcc "$CODE_PATH" -O2 -std=c17 -o "$BUILD_DIR/app" 2> "$ERROR_PATH" || true
 
-if [ -s "$WORK_DIR/error.txt" ]; then
-  cat "$WORK_DIR/error.txt"
+if [ -s "$ERROR_PATH" ]; then
+  cat "$ERROR_PATH"
   exit 1
 fi
 

@@ -1,15 +1,18 @@
 #!/bin/sh
 set -e
 
+export HOME="/tmp"
+export TMPDIR="/tmp"
+
 LANGUAGE="${SELECTED_LANGUAGE:-c}"
 WORK_DIR="/app/work"
 INPUT_PATH="$WORK_DIR/input.txt"
-ERROR_PATH="$WORK_DIR/error.txt"
+ERROR_PATH="/tmp/error.txt"
 BUILD_DIR="/tmp/build"
 EXEC_DIR="/tmp/exec"
 BIN_PATH="$EXEC_DIR/app"
 
-mkdir -p "$BUILD_DIR" "$EXEC_DIR" "$WORK_DIR"
+mkdir -p "$BUILD_DIR" "$EXEC_DIR"
 
 if [ "$LANGUAGE" = "cpp" ]; then
   CODE_PATH="$WORK_DIR/code.cpp"

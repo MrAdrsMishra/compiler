@@ -1,20 +1,23 @@
 #!/bin/sh
 set -e
 
+export HOME="/tmp"
+export TMPDIR="/tmp"
+
 # echo "===== cpp-runner: start ====="
 
 # Prefer files under /app/work when host mounts a directory there
 WORK_DIR="/app/work"
 CODE_PATH="$WORK_DIR/code.cpp"
 INPUT_PATH="$WORK_DIR/input.txt"
-ERROR_PATH="$WORK_DIR/error.txt"
+ERROR_PATH="/tmp/error.txt"
 
 BUILD_DIR="/tmp/build"
 EXEC_DIR="/tmp/exec"
 BIN_BUILD="$BUILD_DIR/a.out"
 BIN_EXEC="$EXEC_DIR/a.out"
 
-mkdir -p "$BUILD_DIR" "$EXEC_DIR" "$WORK_DIR"
+mkdir -p "$BUILD_DIR" "$EXEC_DIR"
 
 if [ ! -f "$CODE_PATH" ]; then
   echo "ERROR: code.cpp not found"
