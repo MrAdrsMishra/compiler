@@ -1,4 +1,4 @@
-import { use, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Editor from "@monaco-editor/react";
 import useCustomizationStore from "./CustomizationStore";
 
@@ -35,23 +35,23 @@ export const CodeEditor = () => {
     }
     setIsNewTabMenuOpen(!isNewTabMenuOpen);
   };
-  async function chatWithAi() {
-    setIsAiThinking(true);
-    console.log("clicked");
+  // async function chatWithAi() {
+  //   setIsAiThinking(true);
+  //   console.log("clicked");
 
-    const result = await fetch("http://localhost:5000/chat", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        prompt: aiPrompt,
-      }),
-    });
-    const res = await result.json();
-    setAiResponse(res.text);
-    setIsAiThinking(false);
-  }
+  //   const result = await fetch("http://localhost:5000/chat", {
+  //     method: "POST",
+  //     headers: {
+  //       "Content-Type": "application/json",
+  //     },
+  //     body: JSON.stringify({
+  //       prompt: aiPrompt,
+  //     }),
+  //   });
+  //   const res = await result.json();
+  //   setAiResponse(res.text);
+  //   setIsAiThinking(false);
+  // }
 
   const layoutRef = useRef<HTMLDivElement | null>(null);
 
