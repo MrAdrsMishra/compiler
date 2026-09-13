@@ -1,174 +1,219 @@
-# Secure Code Runner Platform
+# ⚡ RunMe — Secure Sandboxed Compiler & Online IDE
 
-A high-performance, **Docker‑based, sandboxed online code execution system** designed for competitive programming platforms and online judges. It securely compiles and executes untrusted user code across multiple languages with strict resource isolation and multi-layer security.
+A high-performance, **Docker-based sandboxed code execution platform & modern web IDE** designed for competitive programming, online judge systems, and developer sandboxes. It securely compiles and executes untrusted user code across 15+ programming languages with strict resource isolation, multi-layer security, and 3-tier execution fallbacks.
 
 ---
 
 ## 🚀 Key Features
 
-- **Multi-Layer Sandboxing**: Combines Docker isolation, non-root execution, and strict Linux capability dropping.
-- **Resource Constraints**: Fine-grained control over CPU (0.5 cores), Memory (128MB-256MB), and PIDs (128 limit).
-- **Multi-Language Support**: Optimized runners for C++20, Python 3, Rust, Java, and Node.js.
-- **Network Isolation**: Zero network access for user code to prevent data exfiltration.
-- **Filesystem Security**: Read-only root filesystem with `tmpfs` mounts for secure execution.
-- **Rate Limiting**: Integrated Nginx rate limiting to protect against DoS attacks.
+- **🎨 Modern Web IDE ("RunMe")**:
+  - **Monaco Editor Integration**: Full code editing powered by VS Code's Monaco engine with syntax highlighting, autocomplete, and find-and-replace support.
+  - **Multi-Tab File Workspace**: Instant tab switching across multiple language files (`main.cpp`, `script.py`, `Main.java`, etc.).
+  - **Customizable Themes & Layouts**: Toggle between Dracula, Monokai, High Contrast, and GitHub Light themes with custom font sizes, word wrapping, and responsive split view panels.
+  - **Console & I/O Metrics**: Live stdout/stderr streaming, execution time tracking, memory usage stats, and custom standard input (`stdin`) testing.
+  - **AI Code Assistant**: Embedded assistant tab for instant code explanation, debugging guidance, and complexity analysis.
+
+- **🛡️ Multi-Layer Sandboxing & Isolation**:
+  - **Container Isolation**: Non-root execution (`nobody:nogroup`, UID `65534:65534`), `--read-only` root filesystem, and dropped Linux capabilities (`--cap-drop=ALL`).
+  - **Network Isolation**: Complete network disconnection (`--network=none`) preventing data exfiltration or socket connections.
+  - **Seccomp Syscall Filtering**: Custom JSON seccomp profiles enforcing allowed system call boundaries.
+  - **Resource Bounds**: Fine-grained limits per language (CPU cores, 128MB–1024MB RAM, PID limits to defeat fork bombs, output size caps).
+
+- **🔄 3-Tier Resilient Fallback System**:
+  1. **Primary**: High-speed Custom Docker Sandbox Containers.
+  2. **Tier 1 Fallback**: OneCompiler API.
+  3. **Tier 2 Fallback**: Judge0 CE API.
+  *Ensures zero downtime even if host Docker containers are undergoing maintenance.*
+
+- **🔐 Security Gateway**:
+  - Per-IP rate limiting (sliding window algorithm).
+  - Malicious submission scanner guarding against dangerous system calls, shell injection, and path traversal attempts.
+
+- **⚡ Low-Resource / EC2 Ready**:
+  - Shared container images (`gcc-runner` for C & C++, `node-runner` for JS & TS) for reduced disk footprint on cloud nodes (e.g. AWS `t3.small`).
 
 ---
 
 ## 🧱 Architecture Overview
 
-The system uses a 3-tier architecture to ensure maximum security and scalability:
-
 ```mermaid
 graph TD
-    Client[Client] -->|HTTP| Nginx[Nginx Reverse Proxy]
-    Nginx -->|Rate Limited| Backend[Main API Service]
-    Backend -->|Internal API| Runner[Runner Coordinator]
-    Runner -->|Docker API| Sandbox[Isolated Language Container]
-    Sandbox -->|Execute| UserCode[User Code]
+    Client[Client Web IDE] -->|HTTP / REST| Nginx[Nginx Reverse Proxy]
+    Nginx -->|Rate Limited| Gateway[Express Backend & Security Gateway]
+    Gateway -->|Primary| CustomRunner[Docker Sandbox Runner]
+    CustomRunner -->|Docker Engine API| Containers[Isolated Container Sandbox]
+    Gateway -.->|Fallback Tier 1| OneCompiler[OneCompiler API]
+    Gateway -.->|Fallback Tier 2| Judge0[Judge0 CE API]
+    Containers -->|Execute Code| UserCode[User Program Output]
 ```
 
-1.  **Nginx**: Handles SSL termination, load balancing, and strictly enforces rate limits (5-10 req/s).
-2.  **Main API (Express.js)**: Orchestrates the workflow, validates inputs, and communicates with the Runner service.
-3.  **Runner Service (Docker-in-Docker)**: Manages the lifecycle of volatile execution containers.
-4.  **Language Containers**: Minimal, hardened images containing only the necessary compiler/runtime.
+1. **Client Web IDE**: React 19 SPA running Monaco Editor with live customization & execution state.
+2. **Nginx Reverse Proxy**: SSL termination, load balancing, and strict HTTP rate limiting.
+3. **Express Backend**: Security gateway enforcing payload validation, per-IP rate limits, and dispatching execution to runner tiers.
+4. **Runner Coordinator & Docker Sandbox**: Manages ephemeral container lifecycles, memory samplers, and seccomp profile enforcement.
 
 ---
 
 ## 🔐 Security Model
 
-### 1. Docker Runtime Security
-Containers are spawned with the following safety flags:
-- `--read-only`: Root filesystem is immutable.
-- `--network=none`: No internet or local network access.
-- `--cap-drop=ALL`: Removes all Linux capabilities.
-- `--security-opt=no-new-privileges`: Prevents privilege escalation.
-- `--pids-limit=128`: Protection against fork bombs.
+### 1. Docker Runtime Flags
+Containers are spawned dynamically with non-negotiable security flags:
+```bash
+docker run --rm \
+  --network=none \
+  --memory=256m \
+  --cpus=1.0 \
+  --pids-limit=128 \
+  --read-only \
+  --cap-drop=ALL \
+  --security-opt=no-new-privileges \
+  --security-opt=seccomp=/src/security/seccomp-profile.json \
+  --user=65534:65534 \
+  --tmpfs=/tmp:rw,nosuid,nodev,exec,size=256m \
+  -v /tmp/judge-xyz:/app/work:ro \
+  mradrsmishra/compiler.com:gcc-runner
+```
 
-### 2. Filesystem Strategy
-| Path | Permission | Purpose |
+### 2. Filesystem Access Strategy
+| Path | Permission | Description |
 | :--- | :--- | :--- |
-| `/` | **Read-Only** | Protects system binaries and libraries. |
-| `/app/work` | **Read/Write (noexec)** | Temporary storage for user source code. |
-| `/tmp` | **Read/Write (exec)** | `tmpfs` mount for compiled binaries execution. |
+| `/` | **Read-Only** | Protects system binaries, environment, and container image layers. |
+| `/app/work` | **Read-Only Mount** | User source code and `input.txt` mounted safely as read-only. |
+| `/tmp` | **Read/Write (`tmpfs`)** | RAM-backed ephemeral filesystem for temporary compilation binaries. |
 
 ---
 
 ## 🛠️ Tech Stack
 
-- **Backend**: Node.js, Express.js
-- **Infrastructure**: Docker, Docker Compose
-- **Reverse Proxy**: Nginx
-- **Languages Supported**:
-    - **C++**: `g++ 13.x` (C++20)
-    - **Python**: `Python 3.12`
-    - **Rust**: `rustc 1.75+`
-    - **Java**: `OpenJDK 21`
-    - **Node.js**: `Node 24`
+- **Frontend (Web IDE)**: React 19, TypeScript, Vite 6, Tailwind CSS v4, `@monaco-editor/react`, Zustand.
+- **Backend Service**: Node.js (ES Modules), Express.js, Axios, Dotenv.
+- **Infrastructure & Sandboxing**: Docker, Docker Compose, Nginx, Linux cgroups v1/v2, Seccomp profiles.
+- **Supported Languages**:
+  - **C / C++**: `g++ 13` (C++20)
+  - **Python**: `Python 3.12`
+  - **Java**: `OpenJDK 21`
+  - **JavaScript / TypeScript**: `Node.js 24`
+  - **Rust**: `rustc 1.75+`
+  - **Go**: `Go 1.22+`
+  - **C#**: `.NET SDK 8`
+  - **Kotlin, Swift, PHP, Ruby, R, Bash**
 
 ---
 
 ## 🏃 Getting Started
 
 ### Prerequisites
+- Node.js (v18+)
 - Docker & Docker Compose
-- Node.js (for local development)
 
-### Setup & Run
-1.  **Clone the repository**:
-    ```bash
-    git clone https://github.com/MrAdrsMishra/compiler-VM.git
-    cd compiler-VM
-    ```
-2.  **Configure environment**:
-    Create a `.env` file in the root:
-    ```env
-    PORT=3000
-    RUNNER_PORT=4000
-    CORS_ORIGIN=http://localhost:5173
-    RUNNER_URL=http://runner:4000
-    RUNNER_REQUEST_TIMEOUT_MS=20000
-    ```
+### 1. Clone & Setup Repository
+```bash
+git clone https://github.com/MrAdrsMishra/compiler.git
+cd compiler
+```
 
-### Low-Resource EC2 Mode (t3.small friendly)
+### 2. Environment Configuration
+Create a `.env` file in the root directory:
+```env
+PORT=3000
+RUNNER_PORT=4000
+CORS_ORIGIN=http://localhost:5173
+RUNNER_URL=http://localhost:4000
+RUNNER_REQUEST_TIMEOUT_MS=20000
+GATEWAY_RATE_LIMIT=30
+GATEWAY_RATE_WINDOW_MS=60000
+```
 
-To reduce total pulled image footprint and pull only what is used:
+### 3. Run Development Environment
+
+**Start Backend Server:**
+```bash
+npm install
+npm run dev
+```
+
+**Start Web IDE Frontend:**
+```bash
+cd IDE
+npm install
+npm run dev
+```
+Open `http://localhost:5173` in your browser to launch the Web IDE.
+
+### 4. Docker Compose Production Build
+To launch the full stack (Nginx + Backend + Docker Runner):
+```bash
+docker-compose up --build
+```
+
+---
+
+## ⚡ Low-Resource EC2 Deployment Mode
+
+To run efficiently on small cloud instances (e.g. AWS `t3.small` / 2GB RAM):
 
 ```env
-# Use shared images for C/C++ and JS/TS
+# Enable shared images (gcc-runner for C/C++, node-runner for JS/TS)
 RUNNER_USE_SHARED_IMAGES=1
 
-# Optional: allow only the languages you actually need on this node
-# Example keeps only C++, Python, JavaScript
-RUNNER_ALLOWED_LANGS=cpp,python,javascript
+# Optional: Restrict allowed languages on this node
+RUNNER_ALLOWED_LANGS=cpp,python,javascript,java
 
-# Optional: custom image repository
+# Custom image repository tag
 RUNNER_IMAGE_REPO=mradrsmishra/compiler.com
 ```
 
-Build/publish now supports shared runner images:
-
-- `gcc-runner` for both C and C++
-- `node-runner` for both JavaScript and TypeScript
-
-Legacy split images can still be built/published when needed:
-
-```bash
-BUILD_LEGACY_RUNNERS=1 npm run images:build
-PUBLISH_LEGACY_RUNNERS=1 npm run images:publish
-```
-
-Build and publish can also be filtered to only selected runners:
-
+Build/Publish selected language runners:
 ```bash
 BUILD_LANGS=gcc,node,python npm run images:build
 PUBLISH_LANGS=gcc,node,python npm run images:publish
 ```
 
-3.  **Spin up the infrastructure**:
-    ```bash
-    docker-compose up --build
-    ```
-
-The API will be available at `http://localhost`.
-
 ---
 
 ## 📡 API Reference
 
-### Run Code
-`POST /v1/practice/run-code`
+### Run Code Endpoint
+`POST /practice/run-code`
 
 **Request Body:**
 ```json
 {
   "selectedLanguage": "cpp",
-  "userCode": "#include <iostream>\nint main() { std::cout << \"Hello World\"; return 0; }",
-  "userInput": ""
+  "userCode": "#include <iostream>\nint main() {\n    std::cout << \"Hello World from RunMe!\";\n    return 0;\n}",
+  "userInput": "",
+  "fileName": "main.cpp"
 }
 ```
 
-**Success Response (Verdict: AC):**
+**Success Response (`Verdict: AC`):**
 ```json
 {
-  "success": true,
-  "verdict": "AC",
-  "output": "Hello World",
-  "error": null
+  "data": {
+    "stdout": "Hello World from RunMe!",
+    "stderr": null,
+    "compile_output": null,
+    "time": "0.04s",
+    "memory": 4,
+    "service": "custom-runner"
+  }
 }
 ```
 
-**Error Responses:**
-- `TLE`: Time Limit Exceeded (10s limit)
-- `COMPILE_ERROR`: Compilation failed
-- `RUNTIME_ERROR`: Crash or non-zero exit code
-- `SYSTEM_ERROR`: Infrastructure failure
+**Possible Verdicts:**
+- `AC` (Accepted / Successful Execution)
+- `TLE` (Time Limit Exceeded)
+- `COMPILE_ERROR` (Compilation Failure)
+- `RUNTIME_ERROR` (Segmentation fault / memory limit / runtime exception)
+- `SECURITY_VIOLATION` (Blocked by security gateway)
+- `RATE_LIMITED` (Request limit exceeded)
 
 ---
 
 ## ⭐ Author
 
 **Adarsh Mishra**
-*Backend & Systems Engineering*
+- **GitHub**: [@MrAdrsMishra](https://github.com/MrAdrsMishra)
+- **Repository**: [https://github.com/MrAdrsMishra/compiler](https://github.com/MrAdrsMishra/compiler)
+- **Email**: [adrshmishra020@gmail.com](mailto:adrshmishra020@gmail.com)
 
-This project is part of the [Placement Engine](https://github.com/MrAdrsMishra) ecosystem.

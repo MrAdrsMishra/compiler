@@ -92,3 +92,105 @@ html {
 #ide {
   scroll-margin-top: 1rem;
 }
+
+/* ========================================================================== */
+/* Monaco Editor Find & Replace Widget Styling & Hover Fixes                */
+/* ========================================================================== */
+
+.monaco-editor .find-widget {
+  border-radius: 8px !important;
+  padding: 6px 10px !important;
+  box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.4) !important;
+  transition: opacity 0.15s ease, transform 0.15s ease !important;
+}
+
+/* Dark theme find widget overrides */
+.vs-dark .find-widget,
+.hc-black .find-widget {
+  background-color: #1a1b20 !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  color: #e2e8f0 !important;
+}
+
+/* Light theme find widget overrides */
+.vs .find-widget {
+  background-color: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #1e293b !important;
+}
+
+/* Fix input fields inside find widget */
+.monaco-editor .find-widget .monaco-inputbox {
+  border-radius: 6px !important;
+  padding: 2px 4px !important;
+}
+
+.vs-dark .find-widget .monaco-inputbox,
+.hc-black .find-widget .monaco-inputbox {
+  background-color: #121316 !important;
+  border: 1px solid #334155 !important;
+  color: #f8fafc !important;
+}
+
+.vs .find-widget .monaco-inputbox {
+  background-color: #f8fafc !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+/* Fix all interactive icons & action buttons inside find widget */
+.monaco-editor .find-widget .button,
+.monaco-editor .find-widget .monaco-custom-checkbox,
+.monaco-editor .find-widget .codicon,
+.monaco-editor .find-widget .close-button {
+  border-radius: 6px !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+
+/* Hover state fixes for close (escape), find-in-selection, regex, case sensitive, replace icons */
+.vs-dark .find-widget .button:hover,
+.vs-dark .find-widget .monaco-custom-checkbox:hover,
+.vs-dark .find-widget .codicon:hover,
+.vs-dark .find-widget .close-button:hover,
+.hc-black .find-widget .button:hover,
+.hc-black .find-widget .monaco-custom-checkbox:hover,
+.hc-black .find-widget .codicon:hover,
+.hc-black .find-widget .close-button:hover {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  color: #ffffff !important;
+  opacity: 1 !important;
+}
+
+.vs .find-widget .button:hover,
+.vs .find-widget .monaco-custom-checkbox:hover,
+.vs .find-widget .codicon:hover,
+.vs .find-widget .close-button:hover {
+  background-color: rgba(0, 0, 0, 0.08) !important;
+  color: #0f172a !important;
+  opacity: 1 !important;
+}
+
+/* Active / Checked toggles (e.g. Find in selection, Match case, Regex) */
+.monaco-editor .find-widget .button.checked,
+.monaco-editor .find-widget .monaco-custom-checkbox.checked,
+.monaco-editor .find-widget .monaco-checkbox.checked {
+  background-color: rgba(249, 115, 22, 0.2) !important;
+  color: #f97316 !important;
+  border: 1px solid rgba(249, 115, 22, 0.4) !important;
+  border-radius: 6px !important;
+}
+
+.monaco-editor .find-widget .button.checked:hover,
+.monaco-editor .find-widget .monaco-custom-checkbox.checked:hover {
+  background-color: rgba(249, 115, 22, 0.35) !important;
+  color: #ffedd5 !important;
+}
+
+/* Specific padding/spacing for close button & find-in-selection icon */
+.monaco-editor .find-widget .close-button,
+.monaco-editor .find-widget .codicon-widget-close,
+.monaco-editor .find-widget .codicon-find-selection {
+  padding: 3px !important;
+  margin: 0 1px !important;
+}

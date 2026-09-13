@@ -94,14 +94,14 @@ function App() {
 
   return (
     <>
-      <Navbar onNavigate={(p) => handleNavigate(p)} currentPage={currentPage} />
+      {currentPage !== "compiler" && <Navbar onNavigate={(p) => handleNavigate(p)} currentPage={currentPage} />}
       {currentPage === 'home' && (
         <LandingPage
           onOpenCompiler={(langKey) => handleNavigate('compiler', langKey)}
         />
       )}
       {currentPage === 'compiler' && <CompilerPage />}
-    </>
+    </>   
   )
 }
 

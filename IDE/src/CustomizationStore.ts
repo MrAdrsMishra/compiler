@@ -79,6 +79,30 @@ const saveFullscreenState = (value: boolean) => {
   }
 };
 
+// LocalStorage helpers for settings persistence
+const loadSettingsState = () => {
+  try {
+    const raw = localStorage.getItem("editor_settings");
+    if (raw) return JSON.parse(raw);
+  } catch (e) {
+    console.warn("Failed to load settings from localStorage:", e);
+  }
+  return {
+    fontSize: 14,
+    wordWrap: "off",
+    disableAutocomplete: false,
+    editorType: "monaco",
+  };
+};
+
+const saveSettingsState = (settings: Record<string, any>) => {
+  try {
+    localStorage.setItem("editor_settings", JSON.stringify(settings));
+  } catch (e) {
+    console.warn("Failed to save settings to localStorage:", e);
+  }
+};
+
 const getCodeStorageKey = (lang: string) => `${STORAGE_KEYS.CODE_PREFIX}${lang}`;
 
 interface EditorState {
@@ -93,6 +117,14 @@ interface EditorState {
   isRunning: boolean;
   theme: string;
   isFullscreen: boolean;
+
+  // Settings State
+  fontSize: number;
+  wordWrap: "on" | "off";
+  disableAutocomplete: boolean;
+  editorType: "monaco" | "ace";
+  isSettingsOpen: boolean;
+
   setLanguage: (lang: string) => void;
   closeLanguage: (lang: string) => void;
   setTheme: (theme: string) => void;
@@ -100,13 +132,22 @@ interface EditorState {
   setUserInput: (input: string) => void;
   runCode: () => Promise<void>;
   toggleFullscreen: () => void;
+
+  // Settings Actions
+  setFontSize: (size: number) => void;
+  setWordWrap: (wrap: "on" | "off") => void;
+  setDisableAutocomplete: (disable: boolean) => void;
+  setEditorType: (type: "monaco" | "ace") => void;
+  openSettings: () => void;
+  closeSettings: () => void;
+  resetSettings: () => void;
 }
 
 const templates: Record<string, string> = {
   c: `#include <stdio.h>
 
 int main() {
-    printf("Hello World\n");
+    printf("Hello World\\n");
     return 0;
 }`,
 
@@ -151,7 +192,7 @@ public class Program {
 }`,
 
   php: `<?php
-echo "Hello World\n";
+echo "Hello World\\n";
 ?>`,
 
   ruby: `puts "Hello World"`,
@@ -193,6 +234,7 @@ const useCustomizationStore = create<EditorState>((set, get) => {
   const savedInput = loadFromSession(STORAGE_KEYS.INPUT, "");
   const savedOpenLanguages = loadJsonFromSession(STORAGE_KEYS.OPEN_LANGUAGES, [normalizedLanguage]);
   const openLanguages = Array.from(new Set([normalizedLanguage, ...savedOpenLanguages]));
+  const initialSettings = loadSettingsState();
 
   return {
     selectedLanguage: normalizedLanguage,
@@ -203,8 +245,15 @@ const useCustomizationStore = create<EditorState>((set, get) => {
     executionTime: null,
     memoryUsage: null,
     isRunning: false,
-    theme: "github",
+    theme: "dracula",
     isFullscreen: loadFullscreenState(),
+
+    fontSize: initialSettings.fontSize || 14,
+    wordWrap: initialSettings.wordWrap || "off",
+    disableAutocomplete: initialSettings.disableAutocomplete || false,
+    editorType: initialSettings.editorType || "monaco",
+    isSettingsOpen: false,
+
     setLanguage: (lang) => {
       const nextCode = loadFromSession(getCodeStorageKey(lang), templates[lang] || "");
       const currentOpenLanguages = get().openLanguages;
@@ -332,6 +381,61 @@ const useCustomizationStore = create<EditorState>((set, get) => {
       const newState = !currentState;
       saveFullscreenState(newState);
       set({ isFullscreen: newState });
+    },
+
+    // Settings actions
+    setFontSize: (size) => {
+      const clamped = Math.max(8, Math.min(32, size));
+      set({ fontSize: clamped });
+      const current = get();
+      saveSettingsState({
+        fontSize: clamped,
+        wordWrap: current.wordWrap,
+        disableAutocomplete: current.disableAutocomplete,
+        editorType: current.editorType,
+      });
+    },
+    setWordWrap: (wrap) => {
+      set({ wordWrap: wrap });
+      const current = get();
+      saveSettingsState({
+        fontSize: current.fontSize,
+        wordWrap: wrap,
+        disableAutocomplete: current.disableAutocomplete,
+        editorType: current.editorType,
+      });
+    },
+    setDisableAutocomplete: (disable) => {
+      set({ disableAutocomplete: disable });
+      const current = get();
+      saveSettingsState({
+        fontSize: current.fontSize,
+        wordWrap: current.wordWrap,
+        disableAutocomplete: disable,
+        editorType: current.editorType,
+      });
+    },
+    setEditorType: (type) => {
+      set({ editorType: type });
+      const current = get();
+      saveSettingsState({
+        fontSize: current.fontSize,
+        wordWrap: current.wordWrap,
+        disableAutocomplete: current.disableAutocomplete,
+        editorType: type,
+      });
+    },
+    openSettings: () => set({ isSettingsOpen: true }),
+    closeSettings: () => set({ isSettingsOpen: false }),
+    resetSettings: () => {
+      const defaults = {
+        fontSize: 14,
+        wordWrap: "off" as const,
+        disableAutocomplete: false,
+        editorType: "monaco" as const,
+      };
+      set(defaults);
+      saveSettingsState(defaults);
     },
   };
 });

@@ -1,6 +1,6 @@
 interface NavbarProps {
-  onNavigate: (page: 'home' | 'compiler') => void;
-  currentPage: 'home' | 'compiler';
+  onNavigate: (page: "home" | "compiler") => void;
+  currentPage: "home" | "compiler";
 }
 
 export function Navbar({ onNavigate, currentPage }: NavbarProps) {
@@ -13,7 +13,7 @@ export function Navbar({ onNavigate, currentPage }: NavbarProps) {
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3.5 sm:px-6 lg:px-8">
           {/* Logo / Brand */}
           <button
-            onClick={() => onNavigate('home')}
+            onClick={() => onNavigate("home")}
             className="group flex items-center gap-3 transition-transform duration-200 hover:scale-[1.02] text-left"
             aria-label="RunMe Compiler Home"
           >
@@ -37,10 +37,6 @@ export function Navbar({ onNavigate, currentPage }: NavbarProps) {
                 <span className="font-heading text-xl font-bold tracking-tight text-stone-900">
                   RunMe
                 </span>
-                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100/80 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Engine Live
-                </span>
               </div>
               <p className="text-[11px] font-medium text-stone-500 tracking-wide">
                 Instant Multi-Language IDE
@@ -51,21 +47,21 @@ export function Navbar({ onNavigate, currentPage }: NavbarProps) {
           {/* Navigation Links */}
           <div className="flex items-center gap-3 sm:gap-4">
             <button
-              onClick={() => onNavigate('home')}
+              onClick={() => onNavigate("home")}
               className={`rounded-full px-4 py-2 text-sm font-semibold transition-all duration-200 ${
-                currentPage === 'home'
-                  ? 'bg-orange-100/90 text-orange-800 shadow-xs'
-                  : 'text-stone-600 hover:bg-stone-100/80 hover:text-stone-900'
+                currentPage === "home"
+                  ? "bg-orange-100/90 text-orange-800 shadow-xs"
+                  : "text-stone-600 hover:bg-stone-100/80 hover:text-stone-900"
               }`}
             >
               Home
             </button>
             <button
-              onClick={() => onNavigate('compiler')}
+              onClick={() => onNavigate("compiler")}
               className={`group relative inline-flex items-center gap-2 overflow-hidden rounded-full px-5 py-2 text-sm font-bold transition-all duration-300 ${
-                currentPage === 'compiler'
-                  ? 'bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-md shadow-orange-500/30'
-                  : 'bg-gradient-to-r from-stone-900 to-stone-800 text-white hover:from-orange-600 hover:to-amber-600 shadow-md shadow-stone-900/10 hover:shadow-orange-500/25 hover:-translate-y-0.5'
+                currentPage === "compiler"
+                  ? "bg-gradient-to-r from-orange-600 to-amber-600 text-white shadow-md shadow-orange-500/30"
+                  : "bg-gradient-to-r from-stone-900 to-stone-800 text-white hover:from-orange-600 hover:to-amber-600 shadow-md shadow-stone-900/10 hover:shadow-orange-500/25 hover:-translate-y-0.5"
               }`}
             >
               <span>Launch Compiler</span>
