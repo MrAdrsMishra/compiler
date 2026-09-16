@@ -106,43 +106,77 @@ async function executeOneCompilerFallback(selectedLanguage, userCode, userInput,
     },
     {
       headers: { "Content-Type": "application/json" },
-      timeout: 10000,
+      responseType: "stream",
+      timeout: 8000,
     }
   );
-
-  const data = response.data;
-  if (data && typeof data === "object" && data.type === "error") {
-    throw new Error(data.message || "OneCompiler execution error");
-  }
 
   let stdout = "";
   let stderr = "";
   let exception = "";
   let executionTime = null;
+  let buffer = "";
 
-  if (typeof data === "string") {
-    const lines = data.split("\n").filter(Boolean);
-    for (const line of lines) {
+  const stream = response.data;
+
+  await new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      if (stream && typeof stream.destroy === "function") {
+        stream.destroy();
+      }
+      if (stdout || stderr || exception) {
+        resolve();
+      } else {
+        reject(new Error("OneCompiler stream timed out with no output"));
+      }
+    }, 10000);
+
+    const processLine = (line) => {
+      const trimmed = line.trim();
+      if (!trimmed) return;
       try {
-        const parsed = JSON.parse(line);
+        const parsed = JSON.parse(trimmed);
+        if (parsed.type === "error") {
+          reject(new Error(parsed.message || "OneCompiler execution error"));
+          return;
+        }
         if (parsed.type === "stdout") stdout += parsed.data || "";
         if (parsed.type === "stderr") stderr += parsed.data || "";
         if (parsed.type === "exception") exception += parsed.data || "";
-        if (parsed.type === "exit" && parsed.executionTime != null) {
-          executionTime = `${(parsed.executionTime / 1000).toFixed(2)}s`;
+        if (parsed.type === "exit") {
+          if (parsed.executionTime != null) {
+            executionTime = `${(parsed.executionTime / 1000).toFixed(2)}s`;
+          }
+          clearTimeout(timer);
+          resolve();
         }
       } catch {
-        stdout += line + "\n";
+        stdout += trimmed + "\n";
       }
-    }
-  } else if (typeof data === "object" && data !== null) {
-    stdout = data.stdout || data.output || "";
-    stderr = data.stderr || data.error || "";
-    exception = data.exception || "";
-    if (data.executionTime) {
-      executionTime = `${(data.executionTime / 1000).toFixed(2)}s`;
-    }
-  }
+    };
+
+    stream.on("data", (chunk) => {
+      buffer += chunk.toString("utf8");
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+      for (const line of lines) {
+        processLine(line);
+      }
+    });
+
+    stream.on("end", () => {
+      clearTimeout(timer);
+      if (buffer.trim()) {
+        processLine(buffer);
+      }
+      resolve();
+    });
+
+    stream.on("error", (err) => {
+      clearTimeout(timer);
+      reject(err);
+    });
+  });
 
   const combinedError = [stderr, exception].filter(Boolean).join("\n").trim() || null;
 

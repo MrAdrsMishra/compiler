@@ -4,6 +4,7 @@ import { Navbar } from "./components/Navbar"
 import { CompilerPage } from "./pages/CompilerPage"
 import useCustomizationStore from "./CustomizationStore"
 import { LANGUAGE_ROUTES, getLanguageKeyFromSlug, getSlugForLanguage } from "./utils/routing"
+import { updateSeoMetadata } from "./utils/seo"
 import "./index.css"
 
 type Page = 'home' | 'compiler'
@@ -52,12 +53,16 @@ function App() {
     let title = "Online C, C++, Java, Python, Go, Rust & JavaScript Compiler | RunMe"
     let description = "Run code online instantly with RunMe - a fast, responsive online compiler for C, C++, Java, Python, JavaScript, Go, and Rust. Enjoy unlimited free browser execution."
     let canonicalUrl = "https://onlinecompiler.me/"
+    let keywords: string | undefined = undefined
+    let languageName: string | undefined = undefined
 
     if (currentPage === 'compiler') {
       const routeInfo = LANGUAGE_ROUTES[selectedLanguage]
       if (routeInfo) {
         title = routeInfo.title
         description = routeInfo.description
+        keywords = routeInfo.keywords
+        languageName = routeInfo.name
         canonicalUrl = `https://onlinecompiler.me/${routeInfo.slug}`
       } else {
         title = "Interactive Online Compiler Workspace | RunMe"
@@ -66,13 +71,14 @@ function App() {
       }
     }
 
-    document.title = title
-
-    const metaDesc = document.querySelector('meta[name="description"]')
-    if (metaDesc) metaDesc.setAttribute('content', description)
-
-    const canonicalLink = document.querySelector('link[rel="canonical"]')
-    if (canonicalLink) canonicalLink.setAttribute('href', canonicalUrl)
+    updateSeoMetadata({
+      title,
+      description,
+      keywords,
+      canonicalUrl,
+      languageName,
+      isCompilerPage: currentPage === 'compiler'
+    })
   }, [currentPage, selectedLanguage])
 
   const handleNavigate = (page: Page, langKey?: string) => {
